@@ -1,18 +1,21 @@
 package com.madsen.gameproto.model
 
+import com.madsen.gameproto.model.Battle.{BattleResult, BattleState}
+
+
+trait Publisher {
+
+  def publish(ongoing: BattleState): Unit
+
+  def publish(complete: BattleResult): Unit
+}
+
+
 /**
 The purpose is to update combat states one frame
 
   */
 class BattleService(private val publisher: Publisher) {
-
-
-  trait Publisher {
-
-    def publish(ongoing: BattleState): Unit
-
-    def publish(complete: BattleResult): Unit
-  }
 
 
   /**
@@ -22,9 +25,9 @@ class BattleService(private val publisher: Publisher) {
 
     // calculate frame - do ai moves
     if (battle.involved.isEmpty) {
-      publish(BattleResult())
+      publisher.publish(BattleResult())
     } else {
-      publish(battle.copy())
+      publisher.publish(battle.copy())
     }
   }
 }

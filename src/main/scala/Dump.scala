@@ -1,21 +1,13 @@
 package com.madsen.gameproto.model
 
-type SkillLevel = Long
+import scala.concurrent.Future
 
+object Types {
 
+  type SkillLevel = Long
 
-
-
-
-
-
-
-
-
-
-
-
-
+  type Guid = java.util.UUID
+}
 
 
 trait Updateable {
