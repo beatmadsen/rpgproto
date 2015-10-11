@@ -3,17 +3,15 @@ package com.madsen.gameproto.model
 /**
  * Created by erikmadsen2 on 11/10/2015.
  */
-object Ticker {
+class LagTracker {
 
-  private var previous: Double = 0d
+  private var previous: Double = currentTimeMs()
   private var lag: Double = 0d
+
 
   def commitWork(millis: Double): Unit = {
     lag -= millis
   }
-
-
-  def currentTimeMs(): Long = ???
 
 
   def tick(): Unit = {
@@ -23,6 +21,10 @@ object Ticker {
     previous = current
     lag += elapsed
   }
+
+
+  private def currentTimeMs(): Long = System.currentTimeMillis()
+
 
   def latestLag: Double = {
 

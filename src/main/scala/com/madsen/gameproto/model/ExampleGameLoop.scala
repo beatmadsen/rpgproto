@@ -12,6 +12,7 @@ object ExampleGameLoop {
 
   val UpdateFps: Int = 60
   val MillisPerUpdate: Double = 1000.0 / UpdateFps
+  val ticker = new LagTracker
 
 
   def run(): Unit = {
@@ -34,16 +35,17 @@ object ExampleGameLoop {
 
   def updateTurn(): Future[Unit] = Future {
     // NB: Future.apply() is different in scala.concurrent/akka than in Finagle.
-    Ticker.tick()
 
-    var lag: Double = Ticker.latestLag
+    ticker.tick()
+
+    var lag: Double = ticker.latestLag
     while (lag >= MillisPerUpdate) {
 
       // execute frame; movements, physics, ai
       update() // BLOCKING!
-      Ticker.commitWork(MillisPerUpdate)
+      ticker.commitWork(MillisPerUpdate)
 
-      lag = Ticker.latestLag
+      lag = ticker.latestLag
     }
   }
 
