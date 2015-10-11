@@ -10,3 +10,11 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.4" % "test"
 // Uncomment to use Akka
 //libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.11"
 
+libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-actor" % "2.3.11",
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.11" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.4" % "test",
+  "com.typesafe.play" %% "play-json" % "2.3.4"
+
+)
+

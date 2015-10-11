@@ -8,7 +8,7 @@ import scala.concurrent.{Await, Future}
 /**
  * Created by erikmadsen2 on 11/10/2015.
  */
-object GameLoop {
+object ExampleGameLoop {
 
   val UpdateFps: Int = 60
   val MillisPerUpdate: Double = 1000.0 / UpdateFps
