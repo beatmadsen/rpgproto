@@ -3,7 +3,7 @@ package com.madsen.gameproto.model
 import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
 /**
  * Created by erikmadsen2 on 11/10/2015.
@@ -13,6 +13,8 @@ object ExampleGameLoop {
   val UpdateFps: Int = 60
   val MillisPerUpdate: Double = 1000.0 / UpdateFps
   val ticker = new LagTracker
+
+  implicit val ec: ExecutionContextExecutor = ???
 
 
   def run(): Unit = {

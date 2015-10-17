@@ -1,12 +1,19 @@
 package com.madsen.gameproto.akka
 
+import java.net.InetSocketAddress
+
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.io.Tcp._
+import akka.io.{IO, Tcp}
 import akka.pattern.ask
+import akka.util.{ByteString, Timeout}
 import com.madsen.gameproto.akka.UpdateProtocol.{UpdateComplete, _}
 import com.madsen.gameproto.model.LagTracker
+import play.api.libs.json._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.io.StdIn
+
 
 /**
  * Created by erikmadsen on 11/10/2015.
@@ -26,13 +33,19 @@ object GameApp extends App {
 
 class GameLoop extends Actor {
 
+  import scala.concurrent.duration._
+
+  implicit val ec: ExecutionContextExecutor = context.dispatcher
+  implicit val timeout: Timeout = Timeout(1.minute)
 
   val um: ActorRef = context.actorOf(Props[UpdateManager], "update-manager")
 
 
   override def receive: Receive = {
+
     case NextTurn ⇒ runOneTurn()
   }
+
 
   self ! NextTurn
 
@@ -56,6 +69,7 @@ class GameLoop extends Actor {
 
 
   private def update(): Future[Unit] = {
+
     (um ? UpdateInit(self)) map (_ ⇒ ())
   }
 
@@ -67,16 +81,22 @@ class GameLoop extends Actor {
 
 
   case object NextTurn
+
+
 }
 
 
 object UpdateProtocol {
 
+
   case class UpdateInit(completeTo: ActorRef)
+
 
   case object UpdateComplete
 
+
 }
+
 
 /**
  * Singleton that manages updates vs lag
@@ -87,6 +107,8 @@ class UpdateManager extends Actor {
   val UpdateFps: Int = 60
   val MillisPerUpdate: Double = 1000.0 / UpdateFps
   val lagTracker = new LagTracker
+
+  implicit val ec: ExecutionContextExecutor = context.dispatcher
 
 
   override def receive: Actor.Receive = {
@@ -112,12 +134,102 @@ class UpdateManager extends Actor {
 
 
   private def doWork(): Future[Unit] = {
+
     // TODO: Delegate work to other actors
     Future {
       1 to 1000 foreach println
     }
   }
 
+
   case class UpdateCarryOutWork(completeTo: ActorRef)
 
+
 }
+
+
+class EchoServer extends Actor {
+
+  import context.system
+
+  IO(Tcp) ! Bind(self, new InetSocketAddress("localhost", 9000))
+
+
+  override def receive: Receive = {
+
+    case b @ Bound(localAddress) ⇒ println(s"bound at $localAddress")
+
+    case CommandFailed(_: Bind) ⇒ context stop self
+
+    case c @ Connected(remote, local) ⇒
+      val handler: ActorRef = context actorOf Props[TcpEcho]
+      val connection: ActorRef = sender()
+
+      connection ! Register(handler)
+  }
+}
+
+
+class TcpEcho extends Actor {
+
+  var count = 0
+
+
+  override def receive: Receive = {
+
+    case Received(data) ⇒ onReceive(data)
+    case PeerClosed ⇒ context stop self
+  }
+
+
+  private def onReceive(data: ByteString): Unit = {
+
+    val jsonIn = Json.parse(data.toArray)
+    val mRequest: Option[RpgRequest] = jsonIn.asOpt[RpgRequest]
+
+    mRequest foreach {
+
+      case RpgRequest("plus", args) ⇒
+        args.get("value") foreach { value ⇒
+          count += value.toInt
+        }
+
+      case RpgRequest("minus", args) ⇒
+        args.get("value") foreach { value ⇒
+          count -= value.toInt
+        }
+
+      case RpgRequest("get", _) ⇒
+
+        val response: RpgResponse = RpgResponse(count)
+        val jsonOut = Json.toJson(response)
+
+        sender() ! Write(ByteString(jsonOut.toString()))
+
+      case _ ⇒ sender ! Write(ByteString("Unexpected input"))
+    }
+  }
+}
+
+
+object RpgRequest {
+
+  implicit val rpgRequestFormat: Format[RpgRequest] = Json.format[RpgRequest]
+}
+
+
+case class RpgRequest(
+  command: String,
+  arguments: Map[String, String]
+)
+
+
+object RpgResponse {
+
+  implicit val rpgResponseFormat: Format[RpgResponse] = Json.format[RpgResponse]
+}
+
+
+case class RpgResponse(
+  count: Int
+)
