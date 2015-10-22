@@ -22,7 +22,8 @@ object GameApp extends App {
 
   val system = ActorSystem("rpg-proto-system")
 
-  system.actorOf(Props[GameLoop], "game-loop")
+  // system.actorOf(Props[GameLoop], "game-loop")
+  system.actorOf(Props[EchoServer], "echo-server")
 
   println("Node started. Kill with 'q' + enter")
   Stream.continually(StdIn.readLine()).takeWhile(_ != "q")
