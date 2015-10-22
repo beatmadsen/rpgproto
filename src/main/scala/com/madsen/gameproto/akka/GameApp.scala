@@ -13,6 +13,7 @@ import play.api.libs.json._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.io.StdIn
+import scala.util.Try
 
 /**
  * Created by erikmadsen on 11/10/2015.
@@ -196,32 +197,42 @@ class TcpEcho extends Actor {
       val (_, b) = buffer.splitAt(indexOfSlice + Separator.size)
       buffer = b
 
+      val mRequest: Option[RpgRequest] = parse(data)
 
-      val jsonIn = Json.parse(data.toArray)
-      val mRequest: Option[RpgRequest] = jsonIn.asOpt[RpgRequest]
+      mRequest foreach onRequest
 
-      mRequest foreach {
-
-        case RpgRequest("plus", args) ⇒
-          args.get("value") foreach { value ⇒
-            count += value.toInt
-          }
-
-        case RpgRequest("minus", args) ⇒
-          args.get("value") foreach { value ⇒
-            count -= value.toInt
-          }
-
-        case RpgRequest("get", _) ⇒
-
-          val response: RpgResponse = RpgResponse(count)
-          val jsonOut = Json.toJson(response)
-
-          sender() ! Write(ByteString(jsonOut.toString()))
-
-        case _ ⇒ sender ! Write(ByteString("Unexpected input"))
-      }
+      onReceive(ByteString.empty) // check for additional commands in buffer
     }
+  }
+
+
+  private def parse(data: ByteString): Option[RpgRequest] = {
+    Try {
+      Json.parse(data.toArray) // TODO: Recover by logging and passing along error
+    }.toOption flatMap (jsValue ⇒ jsValue.asOpt[RpgRequest])
+  }
+
+
+  private def onRequest: (RpgRequest) ⇒ Unit = {
+
+    case RpgRequest("plus", args) ⇒
+      args.get("value") foreach { value ⇒
+        count += value.toInt
+      }
+
+    case RpgRequest("minus", args) ⇒
+      args.get("value") foreach { value ⇒
+        count -= value.toInt
+      }
+
+    case RpgRequest("get", _) ⇒
+
+      val response: RpgResponse = RpgResponse(count)
+      val jsonOut = Json.toJson(response)
+
+      sender() ! Write(ByteString(jsonOut.toString()))
+
+    case _ ⇒ sender ! Write(ByteString("Unexpected input"))
   }
 }
 
