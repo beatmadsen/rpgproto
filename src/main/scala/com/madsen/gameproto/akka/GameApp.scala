@@ -2,7 +2,7 @@ package com.madsen.gameproto.akka
 
 import java.net.InetSocketAddress
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor._
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
@@ -13,7 +13,6 @@ import play.api.libs.json._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.io.StdIn
-
 
 /**
  * Created by erikmadsen on 11/10/2015.
@@ -173,7 +172,9 @@ class EchoServer extends Actor {
 
 class TcpEcho extends Actor {
 
+  val Separator: Seq[Byte] = ByteString("\r\n").toArray.toSeq
   var count = 0
+  var buffer: ByteString = ByteString.empty
 
 
   override def receive: Receive = {
@@ -185,29 +186,41 @@ class TcpEcho extends Actor {
 
   private def onReceive(data: ByteString): Unit = {
 
-    val jsonIn = Json.parse(data.toArray)
-    val mRequest: Option[RpgRequest] = jsonIn.asOpt[RpgRequest]
+    buffer ++= data
 
-    mRequest foreach {
+    val indexOfSlice: Int = buffer.indexOfSlice(Separator)
 
-      case RpgRequest("plus", args) ⇒
-        args.get("value") foreach { value ⇒
-          count += value.toInt
-        }
+    if (indexOfSlice == -1) ()
+    else {
 
-      case RpgRequest("minus", args) ⇒
-        args.get("value") foreach { value ⇒
-          count -= value.toInt
-        }
+      val (_, b) = buffer.splitAt(indexOfSlice + Separator.size)
+      buffer = b
 
-      case RpgRequest("get", _) ⇒
 
-        val response: RpgResponse = RpgResponse(count)
-        val jsonOut = Json.toJson(response)
+      val jsonIn = Json.parse(data.toArray)
+      val mRequest: Option[RpgRequest] = jsonIn.asOpt[RpgRequest]
 
-        sender() ! Write(ByteString(jsonOut.toString()))
+      mRequest foreach {
 
-      case _ ⇒ sender ! Write(ByteString("Unexpected input"))
+        case RpgRequest("plus", args) ⇒
+          args.get("value") foreach { value ⇒
+            count += value.toInt
+          }
+
+        case RpgRequest("minus", args) ⇒
+          args.get("value") foreach { value ⇒
+            count -= value.toInt
+          }
+
+        case RpgRequest("get", _) ⇒
+
+          val response: RpgResponse = RpgResponse(count)
+          val jsonOut = Json.toJson(response)
+
+          sender() ! Write(ByteString(jsonOut.toString()))
+
+        case _ ⇒ sender ! Write(ByteString("Unexpected input"))
+      }
     }
   }
 }
@@ -234,3 +247,4 @@ object RpgResponse {
 case class RpgResponse(
   count: Int
 )
+
