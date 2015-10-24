@@ -6,14 +6,13 @@ import akka.actor._
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
-import akka.util.{ByteString, Timeout}
+import akka.util.Timeout
 import com.madsen.gameproto.akka.UpdateProtocol.{UpdateComplete, _}
 import com.madsen.gameproto.model.LagTracker
 import play.api.libs.json._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.io.StdIn
-import scala.util.Try
 
 /**
  * Created by erikmadsen on 11/10/2015.
@@ -34,21 +33,18 @@ object GameApp extends App {
 
 class GameLoop extends Actor {
 
+  implicit val ec: ExecutionContextExecutor = context.dispatcher
+
   import scala.concurrent.duration._
 
-  implicit val ec: ExecutionContextExecutor = context.dispatcher
   implicit val timeout: Timeout = Timeout(1.minute)
-
-  val um: ActorRef = context.actorOf(Props[UpdateManager], "update-manager")
+  val updateManager: ActorRef = context.actorOf(Props[UpdateManager], "update-manager")
 
 
   override def receive: Receive = {
 
     case NextTurn ⇒ runOneTurn()
   }
-
-
-  self ! NextTurn
 
 
   private def runOneTurn(): Unit = {
@@ -69,9 +65,12 @@ class GameLoop extends Actor {
   }
 
 
+  self ! NextTurn
+
+
   private def update(): Future[Unit] = {
 
-    (um ? UpdateInit(self)) map (_ ⇒ ())
+    (updateManager ? UpdateInit(self)) map (_ ⇒ ())
   }
 
 
@@ -82,7 +81,6 @@ class GameLoop extends Actor {
 
 
   case object NextTurn
-
 
 }
 
@@ -155,6 +153,8 @@ class EchoServer extends Actor {
 
   IO(Tcp) ! Bind(self, new InetSocketAddress("localhost", 9000))
 
+  val clientRegistry: ActorRef = context actorOf Props[ClientRegistry]
+
 
   override def receive: Receive = {
 
@@ -163,76 +163,10 @@ class EchoServer extends Actor {
     case CommandFailed(_: Bind) ⇒ context stop self
 
     case c @ Connected(remote, local) ⇒
-      val handler: ActorRef = context actorOf Props[TcpEcho]
+      val handler: ActorRef = context actorOf Frontend.props(clientRegistry)
       val connection: ActorRef = sender()
 
       connection ! Register(handler)
-  }
-}
-
-
-class TcpEcho extends Actor {
-
-  val Separator: Seq[Byte] = ByteString("\r\n").toArray.toSeq
-  var count = 0
-  var buffer: ByteString = ByteString.empty
-
-
-  override def receive: Receive = {
-
-    case Received(data) ⇒ onReceive(data)
-    case PeerClosed ⇒ context stop self
-  }
-
-
-  private def onReceive(data: ByteString): Unit = {
-
-    buffer ++= data
-
-    val indexOfSlice: Int = buffer.indexOfSlice(Separator)
-
-    if (indexOfSlice == -1) ()
-    else {
-
-      val (_, b) = buffer.splitAt(indexOfSlice + Separator.size)
-      buffer = b
-
-      val mRequest: Option[RpgRequest] = parse(data)
-
-      mRequest foreach onRequest
-
-      onReceive(ByteString.empty) // check for additional commands in buffer
-    }
-  }
-
-
-  private def parse(data: ByteString): Option[RpgRequest] = {
-    Try {
-      Json.parse(data.toArray) // TODO: Recover by logging and passing along error
-    }.toOption flatMap (jsValue ⇒ jsValue.asOpt[RpgRequest])
-  }
-
-
-  private def onRequest: (RpgRequest) ⇒ Unit = {
-
-    case RpgRequest("plus", args) ⇒
-      args.get("value") foreach { value ⇒
-        count += value.toInt
-      }
-
-    case RpgRequest("minus", args) ⇒
-      args.get("value") foreach { value ⇒
-        count -= value.toInt
-      }
-
-    case RpgRequest("get", _) ⇒
-
-      val response: RpgResponse = RpgResponse(count)
-      val jsonOut = Json.toJson(response)
-
-      sender() ! Write(ByteString(jsonOut.toString()))
-
-    case _ ⇒ sender ! Write(ByteString("Unexpected input"))
   }
 }
 
