@@ -5,6 +5,7 @@ import akka.io.Tcp._
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.madsen.gameproto.akka.ClientRegistry._
+import com.madsen.gameproto.akka.Frontend._
 import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext
@@ -13,7 +14,7 @@ import scala.util.Try
 /**
  * Created by erikmadsen on 24/10/2015.
  */
-class Frontend(clientRegistry: ActorRef) extends Actor {
+class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor {
 
   val Separator: Seq[Byte] = ByteString("\r\n").toArray.toSeq
   implicit val timeout: Timeout = Timeout.longToTimeout(8000)
@@ -57,19 +58,19 @@ class Frontend(clientRegistry: ActorRef) extends Actor {
 
   private def handle(request: RpgRequest): Unit = {
 
-    val oldS = sender()
+    val client: ActorRef = sender()
 
     request match {
 
       case RpgRequest("hello", args) ⇒
         args.get("id") foreach { id ⇒
-          clientRegistry ! RegisterClient(id, sender())
+          clientRegistry ! RegisterClient(id, client)
         }
 
       case RpgRequest("check", args) ⇒
         args.get("id") foreach { id ⇒
           (clientRegistry ? ClientQuery(id)).mapTo[Option[ClientResult]] foreach { mResult ⇒
-            oldS ! Write(ByteString(mResult.toString))
+            client ! Write(ByteString(mResult.toString))
           }
         }
 
@@ -88,14 +89,37 @@ class Frontend(clientRegistry: ActorRef) extends Actor {
         val response: RpgResponse = RpgResponse(count)
         val jsonOut = Json.toJson(response)
 
-        sender() ! Write(ByteString(jsonOut.toString()))
+        client ! Write(ByteString(jsonOut.toString()))
 
-      case _ ⇒ sender ! Write(ByteString("Unexpected input"))
+      case _ ⇒ client ! Write(ByteString("Unexpected input"))
     }
   }
 }
 
 object Frontend {
 
-  def props(clientRegistry: ActorRef): Props = Props(classOf[Frontend], clientRegistry)
+  def props(clientRegistry: ActorRef, inputProcessor: ActorRef): Props =
+    Props(classOf[Frontend], clientRegistry, inputProcessor)
+
+  case class RpgRequest(
+    command: String,
+    arguments: Map[String, String]
+  )
+
+  case class RpgResponse(
+    count: Int
+  )
+
+
+  object RpgRequest {
+
+    implicit val rpgRequestFormat: Format[RpgRequest] = Json.format[RpgRequest]
+  }
+
+
+  object RpgResponse {
+
+    implicit val rpgResponseFormat: Format[RpgResponse] = Json.format[RpgResponse]
+  }
+
 }
