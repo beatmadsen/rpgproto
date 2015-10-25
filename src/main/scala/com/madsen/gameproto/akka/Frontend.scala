@@ -4,8 +4,9 @@ import akka.actor._
 import akka.io.Tcp._
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
+import com.madsen.gameproto.Protocol
+import com.madsen.gameproto.Protocol.ClientMessage
 import com.madsen.gameproto.akka.ClientRegistry._
-import com.madsen.gameproto.akka.Frontend._
 import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext
@@ -19,7 +20,10 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
   val Separator: Seq[Byte] = ByteString("\r\n").toArray.toSeq
   implicit val timeout: Timeout = Timeout.longToTimeout(8000)
   implicit val ec: ExecutionContext = context.system.dispatcher
-  var count = 0
+
+  var loggedIn = false
+
+
   var buffer: ByteString = ByteString.empty
 
 
@@ -49,77 +53,44 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
   }
 
 
-  private def parse(data: ByteString): Option[RpgRequest] = {
+  private def parse(data: ByteString): Option[ClientMessage] = {
     Try {
       Json.parse(data.toArray) // TODO: Recover by logging and passing along error
-    }.toOption flatMap (jsValue ⇒ jsValue.asOpt[RpgRequest])
+    }.toOption flatMap (jsValue ⇒ jsValue.asOpt[ClientMessage])
   }
 
 
-  private def handle(request: RpgRequest): Unit = {
+  // TODO: Frontend translates external messages into internal messages for the input processing
+  private def handle(request: ClientMessage): Unit = {
 
     val client: ActorRef = sender()
 
-    request match {
+    (request, loggedIn) match {
 
-      case RpgRequest("hello", args) ⇒
+      case (ClientMessage("hello", args), _) ⇒
         args.get("id") foreach { id ⇒
           clientRegistry ! RegisterClient(id, client)
+          loggedIn = true
         }
 
-      case RpgRequest("check", args) ⇒
+      case (_, false) ⇒
+        client ! Write(ByteString("Not logged in"))
+
+      case (ClientMessage("check", args), _) ⇒
         args.get("id") foreach { id ⇒
           (clientRegistry ? ClientQuery(id)).mapTo[Option[ClientResult]] foreach { mResult ⇒
             client ! Write(ByteString(mResult.toString))
           }
         }
 
-      case RpgRequest("plus", args) ⇒
-        args.get("value") foreach { value ⇒
-          count += value.toInt
-        }
-
-      case RpgRequest("minus", args) ⇒
-        args.get("value") foreach { value ⇒
-          count -= value.toInt
-        }
-
-      case RpgRequest("get", _) ⇒
-
-        val response: RpgResponse = RpgResponse(count)
-        val jsonOut = Json.toJson(response)
-
-        client ! Write(ByteString(jsonOut.toString()))
-
       case _ ⇒ client ! Write(ByteString("Unexpected input"))
     }
   }
 }
 
+
 object Frontend {
 
   def props(clientRegistry: ActorRef, inputProcessor: ActorRef): Props =
     Props(classOf[Frontend], clientRegistry, inputProcessor)
-
-  case class RpgRequest(
-    command: String,
-    arguments: Map[String, String]
-  )
-
-  case class RpgResponse(
-    count: Int
-  )
-
-
-  object RpgRequest {
-
-    implicit val rpgRequestFormat: Format[RpgRequest] = Json.format[RpgRequest]
-  }
-
-
-  object RpgResponse {
-
-    implicit val rpgResponseFormat: Format[RpgResponse] = Json.format[RpgResponse]
-  }
-
 }

@@ -7,10 +7,15 @@ import akka.actor._
  */
 class InputProcessor(stateManager: ActorRef) extends Actor {
 
+
   override def receive: Actor.Receive = ???
 }
 
 object InputProcessor {
 
   def props(stateManager: ActorRef): Props = Props(classOf[InputProcessor], stateManager)
+
+  trait StateUpdate
+
+
 }
