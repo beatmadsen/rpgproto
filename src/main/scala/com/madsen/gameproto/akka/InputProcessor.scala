@@ -17,5 +17,7 @@ object InputProcessor {
 
   trait StateUpdate
 
+  case class UpdatePlayerLocation(x: Long, y: Long, z: Long) extends StateUpdate
+
 
 }

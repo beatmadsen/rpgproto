@@ -31,22 +31,11 @@ class GameLoop(
   }
 
 
-  private def runOneTurn(): Unit = {
-
-
-    // line up user requested changes to game state
-
-    val steps: List[Future[Unit]] = processInput() ::
-      update() ::
-      render() ::
-      Nil
-
-    val f: Future[List[Unit]] = Future.sequence(steps)
-
-    f foreach { _ ⇒
-      self ! NextTurn
-    }
-  }
+  private def runOneTurn(): Unit = for {
+    _ ← processInput()
+    _ ← update()
+    _ ← render()
+  } self ! NextTurn
 
 
   private def update(): Future[Unit] = {

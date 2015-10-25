@@ -2,11 +2,10 @@ package com.madsen.gameproto.akka
 
 import akka.actor._
 import akka.io.Tcp._
-import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
-import com.madsen.gameproto.Protocol
-import com.madsen.gameproto.Protocol.ClientMessage
+import com.madsen.gameproto.Protocol.{ClientMessage, Error, ServerMessage}
 import com.madsen.gameproto.akka.ClientRegistry._
+import com.madsen.gameproto.akka.InputProcessor.StateUpdate
 import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext
@@ -67,25 +66,36 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
 
     (request, loggedIn) match {
 
-      case (ClientMessage("hello", args), _) ⇒
+      case (ClientMessage("logon", args), _) ⇒
         args.get("id") foreach { id ⇒
           clientRegistry ! RegisterClient(id, client)
           loggedIn = true
         }
 
-      case (_, false) ⇒
-        client ! Write(ByteString("Not logged in"))
-
-      case (ClientMessage("check", args), _) ⇒
+      case (ClientMessage("logout", args), _) ⇒
         args.get("id") foreach { id ⇒
-          (clientRegistry ? ClientQuery(id)).mapTo[Option[ClientResult]] foreach { mResult ⇒
-            client ! Write(ByteString(mResult.toString))
-          }
+          clientRegistry ! UnregisterClient(id)
+          loggedIn = false
         }
 
-      case _ ⇒ client ! Write(ByteString("Unexpected input"))
+      case (_, false) ⇒
+        val message = ServerMessage(Seq(Error("Not logged in")), Map.empty)
+        val byteString = ByteString(Json.toJson(message).toString())
+        client ! Write(byteString)
+
+      case (message: ClientMessage, true) ⇒
+        val update: StateUpdate = transform(message)
+        inputProcessor ! update
+
+      case _ ⇒
+        val message = ServerMessage(Seq(Error("Unexpected input")), Map.empty)
+        val byteString = ByteString(Json.toJson(message).toString())
+        client ! Write(byteString)
     }
   }
+
+
+  private def transform(request: ClientMessage): StateUpdate = ???
 }
 
 
