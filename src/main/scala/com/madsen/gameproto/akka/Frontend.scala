@@ -73,13 +73,13 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
 
     (request, loggedIn) match {
 
-      case (ClientMessage("logon", args), _) ⇒
+      case (ClientMessage("logon", Some(args)), _) ⇒
         args.get("id") foreach { id ⇒
           clientRegistry ! RegisterClient(id, client)
           loggedIn = true
         }
 
-      case (ClientMessage("logout", args), _) ⇒
+      case (ClientMessage("logout", Some(args)), _) ⇒
         args.get("id") foreach { id ⇒
           clientRegistry ! UnregisterClient(id)
           loggedIn = false

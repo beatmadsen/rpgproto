@@ -3,6 +3,7 @@ package com.madsen.gameproto.akka
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
+import com.madsen.gameproto.akka.InputProcessor.RunProcessing
 import com.madsen.gameproto.akka.UpdateManager._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -54,7 +55,7 @@ class GameLoop(
   }
 
 
-  private def processInput(): Future[Unit] = ???
+  private def processInput(): Future[Unit] = (inputProcessor ? RunProcessing) map { _ ⇒ () }
 
 
   case object NextTurn

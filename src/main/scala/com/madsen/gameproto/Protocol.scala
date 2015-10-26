@@ -9,7 +9,7 @@ object Protocol {
 
   case class ClientMessage(
     command: String,
-    arguments: Map[String, String]
+    other: Option[Map[String, String]]
   )
 
   case class ServerMessage(

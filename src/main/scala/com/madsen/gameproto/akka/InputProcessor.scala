@@ -1,9 +1,12 @@
 package com.madsen.gameproto.akka
 
 import akka.actor._
+import akka.pattern.ask
 import com.madsen.gameproto.Protocol.ClientMessage
-import com.madsen.gameproto.akka.InputProcessor.RunUpdate
+import com.madsen.gameproto.akka.InputProcessor.{ProcessingComplete, RunProcessing}
 import com.madsen.gameproto.akka.StateManager.StateUpdate
+
+import scala.concurrent.Future
 
 /**
  * Created by erikmadsen on 24/10/2015.
@@ -15,15 +18,27 @@ class InputProcessor(stateManager: ActorRef) extends Actor {
 
   override def receive: Actor.Receive = {
 
-    case RunUpdate ⇒
-      updateStack.reverseIterator foreach { update ⇒
-        stateManager ! update
+    case RunProcessing ⇒
+      val gameLoop: ActorRef = sender()
+
+      Future.sequence {
+        sendUpdates()
+      } map { _ ⇒
+        gameLoop ! ProcessingComplete
       }
+
       updateStack = List.empty
 
     case message: ClientMessage ⇒
       val update: StateUpdate = transform(message)
       updateStack = update :: updateStack
+  }
+
+
+  private def sendUpdates(): Iterator[Future[Any]] = {
+    updateStack.reverseIterator map { update ⇒
+      stateManager ? update
+    }
   }
 
 
@@ -35,7 +50,9 @@ object InputProcessor {
   def props(stateManager: ActorRef): Props = Props(classOf[InputProcessor], stateManager)
 
 
-  case object RunUpdate
+  case object RunProcessing
+
+  case object ProcessingComplete
 
 
 }
