@@ -2,16 +2,22 @@ package com.madsen.gameproto.akka
 
 import akka.actor._
 import akka.pattern.ask
+import akka.util.Timeout
 import com.madsen.gameproto.Protocol.ClientMessage
 import com.madsen.gameproto.akka.InputProcessor.{ProcessingComplete, RunProcessing}
 import com.madsen.gameproto.akka.StateManager.StateUpdate
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Created by erikmadsen on 24/10/2015.
  */
 class InputProcessor(stateManager: ActorRef) extends Actor {
+
+  import Timeout._
+
+  implicit val ec: ExecutionContext = context.system.dispatcher
+  implicit val timeout: Timeout = 30000L
 
   var updateStack: List[StateUpdate] = List.empty
 
