@@ -5,16 +5,15 @@ import akka.io.Tcp._
 import akka.util.{ByteString, Timeout}
 import com.madsen.gameproto.Protocol.{ClientMessage, Error, ServerMessage}
 import com.madsen.gameproto.akka.ClientRegistry._
-import com.madsen.gameproto.akka.InputProcessor.StateUpdate
 import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 /**
  * Created by erikmadsen on 24/10/2015.
  */
-class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor {
+class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor with ActorLogging {
 
   val Separator: Seq[Byte] = ByteString("\r\n").toArray.toSeq
   implicit val timeout: Timeout = Timeout.longToTimeout(8000)
@@ -53,13 +52,21 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
 
 
   private def parse(data: ByteString): Option[ClientMessage] = {
-    Try {
-      Json.parse(data.toArray) // TODO: Recover by logging and passing along error
-    }.toOption flatMap (jsValue ⇒ jsValue.asOpt[ClientMessage])
+    val result: Try[ClientMessage] = tryParsing(data) recoverWith {
+      case e: Exception ⇒
+        log.error(e, "Could not parse input: {}", e.getMessage)
+        Failure(e)
+    }
+    result.toOption
   }
 
 
-  // TODO: Frontend translates external messages into internal messages for the input processing
+  private def tryParsing(data: ByteString): Try[ClientMessage] = for {
+    json ← Try(Json.parse(data.toArray))
+    message ← Try(json.as[ClientMessage])
+  } yield message
+
+
   private def handle(request: ClientMessage): Unit = {
 
     val client: ActorRef = sender()
@@ -84,8 +91,7 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
         client ! Write(byteString)
 
       case (message: ClientMessage, true) ⇒
-        val update: StateUpdate = transform(message)
-        inputProcessor ! update
+        inputProcessor ! message
 
       case _ ⇒
         val message = ServerMessage(Seq(Error("Unexpected input")), Map.empty)
@@ -93,9 +99,6 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
         client ! Write(byteString)
     }
   }
-
-
-  private def transform(request: ClientMessage): StateUpdate = ???
 }
 
 

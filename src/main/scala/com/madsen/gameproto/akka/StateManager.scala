@@ -9,3 +9,12 @@ class StateManager extends Actor {
 
   override def receive: Actor.Receive = ???
 }
+
+object StateManager {
+
+
+  trait StateUpdate
+
+  case class UpdatePlayerLocation(playerId: String, x: Long, y: Long, z: Long) extends StateUpdate
+
+}
