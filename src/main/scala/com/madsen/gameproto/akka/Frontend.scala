@@ -86,18 +86,24 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
         }
 
       case (_, false) ⇒
-        val message = ServerMessage(Seq(Error("Not logged in")), Map.empty)
-        val byteString = ByteString(Json.toJson(message).toString())
+        val byteString: ByteString = encodeError("Not logged in")
         client ! Write(byteString)
 
       case (message: ClientMessage, true) ⇒
         inputProcessor ! message
 
       case _ ⇒
-        val message = ServerMessage(Seq(Error("Unexpected input")), Map.empty)
-        val byteString = ByteString(Json.toJson(message).toString())
+        val byteString: ByteString = encodeError("Unexpected input received")
         client ! Write(byteString)
     }
+  }
+
+
+  private def encodeError(errorMessage: String): ByteString = {
+    val message = ServerMessage(errors = Some(Seq(Error(errorMessage))))
+    val jsValue: JsValue = Json.toJson(message)
+    val byteString = ByteString(jsValue.toString())
+    byteString
   }
 }
 

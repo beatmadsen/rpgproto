@@ -1,6 +1,7 @@
 package com.madsen.gameproto
 
-import play.api.libs.json.{Format, Json}
+import com.madsen.gameproto.Protocol._
+import play.api.libs.json.{Format, JsValue, Json}
 
 /**
  * Created by erikmadsen on 25/10/2015.
@@ -13,20 +14,17 @@ object Protocol {
   )
 
   case class ServerMessage(
-    errors: Seq[Error],
-    characters: Map[String, CharacterState]
+    errors: Option[Seq[Error]] = None,
+    characters: Option[Map[String, CharacterState]] = None
   )
 
   case class Error(message: String)
 
-  case class CharacterState(
-    location: Location,
-    privateState: Option[PrivateCharacterState]
-  )
-
   case class PrivateCharacterState(level: Int)
 
   case class Location(x: Long, y: Long, z: Long)
+
+  case class CharacterState(location: Location, mPrivateCharacterState: Option[PrivateCharacterState])
 
   object ClientMessage {
 
@@ -35,11 +33,24 @@ object Protocol {
 
   object ServerMessage {
 
-    implicit val serverMessageFormat: Format[ServerMessage] = Json.format[ServerMessage]
     implicit val errorFormat: Format[Error] = Json.format[Error]
-    implicit val characterStateFormat: Format[CharacterState] = Json.format[CharacterState]
-    implicit val pCharacterStateFormat: Format[PrivateCharacterState] = Json.format[PrivateCharacterState]
+    implicit val privateCharacterStateFormat: Format[PrivateCharacterState] = Json.format[PrivateCharacterState]
     implicit val locationFormat: Format[Location] = Json.format[Location]
+
+    implicit val cStateFormat: Format[CharacterState] = Json.format[CharacterState]
+    implicit val serverMessageFormat: Format[ServerMessage] = Json.format[ServerMessage]
   }
 
+}
+
+
+object ParsingTest extends App {
+
+  import ServerMessage._
+
+  val message = ServerMessage(Some(Seq(Error("a"), Error("b"))), None)
+
+  val jsValue: JsValue = Json.toJson(message)
+
+  println(jsValue.toString())
 }
