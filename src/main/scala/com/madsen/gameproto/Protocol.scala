@@ -9,9 +9,24 @@ import play.api.libs.json.{Format, JsValue, Json}
 object Protocol {
 
   case class ClientMessage(
-    command: String,
-    other: Option[Map[String, String]]
+    move: Option[MoveCommand],
+    login: Option[LoginCommand],
+    logout: Option[LogoutCommand]
   )
+
+  case class MoveCommand(
+    characterId: String,
+    destination: Location
+  )
+
+  case class LoginCommand(
+    id: String
+  )
+
+  case class LogoutCommand(
+    id: String
+  )
+
 
   case class ServerMessage(
     errors: Option[Seq[Error]] = None,
@@ -29,6 +44,9 @@ object Protocol {
   object ClientMessage {
 
     implicit val clientMessageFormat: Format[ClientMessage] = Json.format[ClientMessage]
+    implicit val moveFormat: Format[MoveCommand] = Json.format[MoveCommand]
+    implicit val loginFormat: Format[LoginCommand] = Json.format[LoginCommand]
+    implicit val logoutFormat: Format[LogoutCommand] = Json.format[LogoutCommand]
   }
 
   object ServerMessage {

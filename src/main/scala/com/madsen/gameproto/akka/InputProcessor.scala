@@ -3,9 +3,9 @@ package com.madsen.gameproto.akka
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
-import com.madsen.gameproto.Protocol.ClientMessage
+import com.madsen.gameproto.Protocol.{ClientMessage, Location, MoveCommand}
 import com.madsen.gameproto.akka.InputProcessor.{ProcessingComplete, RunProcessing}
-import com.madsen.gameproto.akka.StateManager.StateUpdate
+import com.madsen.gameproto.akka.StateManager.{NoUpdate, StateUpdate, StateUpdateLike, UpdatePlayerLocation}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -48,7 +48,17 @@ class InputProcessor(stateManager: ActorRef) extends Actor {
   }
 
 
-  private def transform(request: ClientMessage): StateUpdate = ???
+  private def transform(request: ClientMessage): StateUpdate = {
+
+    import ProtocolStateConversion._
+
+    request.move map { command ⇒
+      doConvert(command)
+    } getOrElse NoUpdate
+  }
+
+
+  private def doConvert[T](t: T)(implicit ev: StateUpdateLike[T]): StateUpdate = ev.convert(t)
 }
 
 object InputProcessor {
@@ -60,5 +70,17 @@ object InputProcessor {
 
   case object ProcessingComplete
 
+
+}
+
+object ProtocolStateConversion {
+
+  implicit object StateUpdateLikeMoveCommand extends StateUpdateLike[MoveCommand] {
+    override def convert(t: MoveCommand): StateUpdate = {
+      val MoveCommand(characterId, Location(x, y, z)) = t
+
+      UpdatePlayerLocation(characterId, x, y, z)
+    }
+  }
 
 }

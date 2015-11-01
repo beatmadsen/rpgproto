@@ -71,30 +71,33 @@ class Frontend(clientRegistry: ActorRef, inputProcessor: ActorRef) extends Actor
 
     val client: ActorRef = sender()
 
-    (request, loggedIn) match {
+    {
+      request.login map { command ⇒
+        clientRegistry ! RegisterClient(command.id, client)
+        loggedIn = true
+        ()
+      }
+    } orElse {
+      request.logout map { command ⇒
+        clientRegistry ! UnregisterClient(command.id)
+        loggedIn = false
+        ()
+      }
+    } getOrElse {
+      (request, loggedIn) match {
 
-      case (ClientMessage("logon", Some(args)), _) ⇒
-        args.get("id") foreach { id ⇒
-          clientRegistry ! RegisterClient(id, client)
-          loggedIn = true
-        }
+        case (_, false) ⇒
+          val byteString: ByteString = encodeError("Not logged in")
+          client ! Write(byteString)
 
-      case (ClientMessage("logout", Some(args)), _) ⇒
-        args.get("id") foreach { id ⇒
-          clientRegistry ! UnregisterClient(id)
-          loggedIn = false
-        }
+        case (message: ClientMessage, true) ⇒
+          inputProcessor ! message
 
-      case (_, false) ⇒
-        val byteString: ByteString = encodeError("Not logged in")
-        client ! Write(byteString)
-
-      case (message: ClientMessage, true) ⇒
-        inputProcessor ! message
-
-      case _ ⇒
-        val byteString: ByteString = encodeError("Unexpected input received")
-        client ! Write(byteString)
+        case _ ⇒
+          val byteString: ByteString = encodeError("Unexpected input received")
+          client ! Write(byteString)
+      }
+      ()
     }
   }
 

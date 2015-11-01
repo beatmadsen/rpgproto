@@ -17,7 +17,14 @@ object StateManager {
 
   trait StateUpdate
 
+  trait StateUpdateLike[T] {
+
+    def convert(t: T): StateUpdate
+  }
+
   case class UpdatePlayerLocation(playerId: String, x: Long, y: Long, z: Long) extends StateUpdate
+
+  case object NoUpdate extends StateUpdate
 
   case object UpdateComplete
 
