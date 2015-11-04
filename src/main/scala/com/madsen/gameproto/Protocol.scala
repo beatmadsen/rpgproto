@@ -42,21 +42,24 @@ object Protocol {
   case class CharacterState(location: Location, mPrivateCharacterState: Option[PrivateCharacterState])
 
   object ClientMessage {
-
     implicit val clientMessageFormat: Format[ClientMessage] = Json.format[ClientMessage]
-    implicit val moveFormat: Format[MoveCommand] = Json.format[MoveCommand]
-    implicit val loginFormat: Format[LoginCommand] = Json.format[LoginCommand]
-    implicit val logoutFormat: Format[LogoutCommand] = Json.format[LogoutCommand]
   }
 
   object ServerMessage {
+    implicit val serverMessageFormat: Format[ServerMessage] = Json.format[ServerMessage]
 
+  }
+
+  object Formats {
+
+    implicit val moveFormat: Format[MoveCommand] = Json.format[MoveCommand]
+    implicit val loginFormat: Format[LoginCommand] = Json.format[LoginCommand]
+    implicit val logoutFormat: Format[LogoutCommand] = Json.format[LogoutCommand]
     implicit val errorFormat: Format[Error] = Json.format[Error]
     implicit val privateCharacterStateFormat: Format[PrivateCharacterState] = Json.format[PrivateCharacterState]
     implicit val locationFormat: Format[Location] = Json.format[Location]
 
     implicit val cStateFormat: Format[CharacterState] = Json.format[CharacterState]
-    implicit val serverMessageFormat: Format[ServerMessage] = Json.format[ServerMessage]
   }
 
 }

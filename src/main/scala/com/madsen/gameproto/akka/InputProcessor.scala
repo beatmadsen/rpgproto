@@ -4,20 +4,24 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
 import com.madsen.gameproto.Protocol.{ClientMessage, Location, MoveCommand}
-import com.madsen.gameproto.akka.InputProcessor.{ProcessingComplete, RunProcessing}
-import com.madsen.gameproto.akka.StateManager.{NoUpdate, StateUpdate, StateUpdateLike, UpdatePlayerLocation}
+import com.madsen.gameproto.akka.InputProcessor.{ClearStack, ProcessingComplete, RunProcessing}
+import com.madsen.gameproto.akka.StateManager.{NoUpdate, StateUpdate, UpdatePlayerLocation}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
- * Created by erikmadsen on 24/10/2015.
- */
+  * Created by erikmadsen on 24/10/2015.
+  */
 class InputProcessor(stateManager: ActorRef) extends Actor {
 
+  import ProtocolStateConversion.StateUpdateLikeMoveCommand
   import Timeout._
 
   implicit val ec: ExecutionContext = context.system.dispatcher
   implicit val timeout: Timeout = 30000L
+
+  // Compile error on implicits if this is not called
+  StateUpdateLikeMoveCommand
 
   var updateStack: List[StateUpdate] = List.empty
 
@@ -29,10 +33,12 @@ class InputProcessor(stateManager: ActorRef) extends Actor {
 
       Future.sequence {
         sendUpdates()
-      } map { _ ⇒
+      } foreach { _ ⇒
+        self ! ClearStack
         gameLoop ! ProcessingComplete
       }
 
+    case ClearStack ⇒
       updateStack = List.empty
 
     case message: ClientMessage ⇒
@@ -50,30 +56,35 @@ class InputProcessor(stateManager: ActorRef) extends Actor {
 
   private def transform(request: ClientMessage): StateUpdate = {
 
-    import ProtocolStateConversion._
+    import InputProcessor.doConvert
 
-    request.move map { command ⇒
-      doConvert(command)
-    } getOrElse NoUpdate
+    request.move map doConvert[MoveCommand] getOrElse NoUpdate
   }
-
-
-  private def doConvert[T](t: T)(implicit ev: StateUpdateLike[T]): StateUpdate = ev.convert(t)
 }
 
 object InputProcessor {
 
   def props(stateManager: ActorRef): Props = Props(classOf[InputProcessor], stateManager)
 
+  import com.madsen.gameproto.akka.StateManager.StateUpdateLike
+
+  def doConvert[T: StateUpdateLike](t: T): StateUpdate = {
+    implicitly[StateUpdateLike[T]].convert(t)
+  }
+
 
   case object RunProcessing
 
-  case object ProcessingComplete
+  case object ClearStack
 
+  case object ProcessingComplete
 
 }
 
+
 object ProtocolStateConversion {
+
+  import StateManager.StateUpdateLike
 
   implicit object StateUpdateLikeMoveCommand extends StateUpdateLike[MoveCommand] {
     override def convert(t: MoveCommand): StateUpdate = {
@@ -84,3 +95,5 @@ object ProtocolStateConversion {
   }
 
 }
+
+
