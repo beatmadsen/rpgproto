@@ -23,8 +23,6 @@ object Octree {
   def apply[T](): Octree[T] = new Empty[T]
 
 
-  // TODO: Find existing node that leaf may belong under if one exists
-  private def childFor[T](point: Point, candidates: Vector[Octree[T]]): Option[Octree[T]] = ???
 
 
   private def parent(point: Point, radius: Long): (Point, Long) = {
@@ -53,10 +51,9 @@ object Octree {
       List(cx, cy, cz) forall { i ⇒ i >= 1 && (1 + i / radius) % 2 == 0 }
     }
 
-
     def add(value: T, centre: Point): Octree[T] = {
 
-
+      // TODO: By 'nature' only 8 children (as defined by points) should fit in each node
       val belongsUnderThisNode: Boolean = ???
 
       if (belongsUnderThisNode) {
@@ -77,9 +74,11 @@ object Octree {
     }
 
 
-    // TODO: By 'nature' only 8 children (as defined by points) should fit in each node
-
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
+
+
+    // TODO: Find existing node that leaf may belong under if one exists
+    private def childFor(point: Point, candidates: Vector[Octree[T]]): Option[Octree[T]] = ???
 
 
     private def createSubtree(value: T, centre: Point): Octree[T] = {
