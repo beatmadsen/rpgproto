@@ -5,23 +5,50 @@ import com.madsen.gameproto.octree.Octree._
 object Octree {
   type Point = (Long, Long, Long)
 
+  val PowersOfTwo: Stream[Long] = Stream.continually(2L).scanLeft(1L) { (a, b) ⇒ a * b }
+
+
+  def isPowerOfTwo(candidate: Long): Boolean = {
+
+    val rest: Stream[Long] = PowersOfTwo dropWhile (_ < candidate)
+    rest.head == candidate
+  }
+
+
+  isPowerOfTwo(32)
+
 
   def apply[T](): Octree[T] = new Empty[T]
 
 
-  private def parent(centre: Long, radius: Long): (Long, Long) = {
-    val (x, r) = (centre, radius)
-    val y: Long = x + r - 2 * r * (((x - r) / (2 * r)) % 2)
+  private def parent(point: Point, radius: Long): (Point, Long) = {
+    val (x, y, z) = point
+    val newPoint: Point = List(x, y, z) map { scalar ⇒ parentScalar(scalar, radius) } match {
+      case x1 :: y1 :: z1 :: _ ⇒ (x1, y1, z1)
+    }
 
-    (y, 2 * r)
+    (newPoint, radius * 2)
+  }
+
+
+  private def parentScalar(centre: Long, radius: Long): Long = {
+    val (x, r) = (centre, radius)
+    x + r - 2 * r * (((x - r) / (2 * r)) % 2)
   }
 
   case class Node[T](
-    centre: Point, // min centre point is (1,1,1) so we don't have to deal with fractions.
-    radius: Long, // min radius should be 1 so we don't have to deal with fractions.
+    centre: Point,
+    radius: Long,
     children: Vector[Octree[T]]
   ) extends Octree[T] {
+    require {
+      val (cx, cy, cz) = centre
+      List(cx, cy, cz) forall { i ⇒ i >= 1 && i % 2 == 1 }
+    }
+    require(isPowerOfTwo(radius))
 
+
+    // TODO: when we add upwards we let the new node decide what to return, but we should always return the root of the tree
     def add(value: T, centre: Point): Octree[T] = ???
 
 
@@ -33,7 +60,12 @@ object Octree {
     def add(value: T, centre: Point): Octree[T] = {
       if (this.centre == centre) Leaf(value, centre)
       else {
-        ??? // TODO: Leaves can only have odd points (to avoid halves). Add node and recurse
+        val (parentCentre, parentRadius) = parent(centre, 1L)
+        val children: Vector[Octree[T]] = Vector(this)
+
+        val node: Node[T] = Node(parentCentre, parentRadius, children)
+
+        node.add(value, centre)
       }
     }
 
