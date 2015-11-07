@@ -82,6 +82,12 @@ object Octree {
         node.add(value, centre)
       }
     }
+	
+	
+	private def rise(value: T, centre: Point): Octree[T] = {
+		// we know from the radius of this guy how many steps we are from bottom.
+		???
+	}
 
 
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
