@@ -2,6 +2,8 @@ package com.madsen.gameproto.octree
 
 import com.madsen.gameproto.octree.Octree._
 
+import scala.annotation.tailrec
+
 object Octree {
   type Point = (Long, Long, Long)
 
@@ -52,19 +54,10 @@ object Octree {
     }
 
 
-    // TODO: By 'nature' only 8 children (as defined by points) should fit in each node
-
-    // TODO: when we add upwards we let the new node decide what to return, but we should always return the root of the tree
     def add(value: T, centre: Point): Octree[T] = {
 
-      val belongsUnderThisNode: Boolean = ???
 
-      def createSubtree(value: T, centre: Point): Octree[T] = radius match {
-        case 2 ⇒ Leaf(value, centre)
-        case n if n > 2 ⇒
-          val p: Point = ??? // TODO: Where should the node be added? - 8 potential locations
-          Node(p, n / 2, Vector.empty).add(value, centre)
-      }
+      val belongsUnderThisNode: Boolean = ???
 
       if (belongsUnderThisNode) {
         val next: Octree[T] = childFor(centre, children) map { subtree ⇒
@@ -82,15 +75,30 @@ object Octree {
         node.add(value, centre)
       }
     }
-	
-	
-	private def rise(value: T, centre: Point): Octree[T] = {
-		// we know from the radius of this guy how many steps we are from bottom.
-		???
-	}
 
+
+    // TODO: By 'nature' only 8 children (as defined by points) should fit in each node
 
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
+
+
+    private def createSubtree(value: T, centre: Point): Octree[T] = {
+      // start with the leaf
+      val leaf = Leaf(value, centre)
+
+      // now get parent for leaf and keep adding until parent == this
+      val nextParent: ((Point, Long)) ⇒ (Point, Long) = (parent _).tupled
+
+      @tailrec
+      def helper(current: (Point, Long), acc: Octree[T]): Octree[T] = nextParent(current) match {
+        case (this.centre, this.radius) ⇒ acc // next parent is this node
+        case next @ (nextCentre, nextRadius) ⇒ // otherwise create missing step
+          val node = Node(nextCentre, nextRadius, Vector(acc))
+          helper(next, node)
+      }
+
+      helper((centre, 1L), leaf)
+    }
   }
 
   /**
