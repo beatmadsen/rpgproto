@@ -23,8 +23,6 @@ object Octree {
   def apply[T](): Octree[T] = new Empty[T]
 
 
-
-
   private def parent(point: Point, radius: Long): (Point, Long) = {
     val (x, y, z) = point
     val newPoint: Point = List(x, y, z) map { scalar ⇒ parentScalar(scalar, radius) } match {
@@ -51,6 +49,7 @@ object Octree {
       List(cx, cy, cz) forall { i ⇒ i >= 1 && (1 + i / radius) % 2 == 0 }
     }
 
+
     def add(value: T, centre: Point): Octree[T] = {
 
       // TODO: By 'nature' only 8 children (as defined by points) should fit in each node
@@ -75,6 +74,13 @@ object Octree {
 
 
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
+
+
+    private def exo() = {
+      val xs: Stream[Long] = PowersOfTwo takeWhile (_ < radius)
+      val initX: Long = centre._1
+      val obo: Stream[Long] = xs.scanRight(initX) { (acc, next) ⇒ acc + next } drop 1
+    }
 
 
     // TODO: Find existing node that leaf may belong under if one exists
