@@ -43,10 +43,12 @@ object Octree {
   ) extends Octree[T] {
     require {
       val (cx, cy, cz) = centre
-      List(cx, cy, cz) forall { i ⇒ i >= 1 && i % 2 == 1 }
+      List(cx, cy, cz) forall { i ⇒ i == 1 || (i > 1 && i % 2 == 0) }
     }
     require(isPowerOfTwo(radius))
 
+
+    // TODO: By 'nature' only 8 children should fit in each node
 
     // TODO: when we add upwards we let the new node decide what to return, but we should always return the root of the tree
     def add(value: T, centre: Point): Octree[T] = ???
