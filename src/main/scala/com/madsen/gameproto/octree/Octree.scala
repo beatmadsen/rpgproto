@@ -76,10 +76,24 @@ object Octree {
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
 
 
-    private def exo() = {
-      val xs: Stream[Long] = PowersOfTwo takeWhile (_ < radius)
-      val initX: Long = centre._1
-      val obo: Stream[Long] = xs.scanRight(initX) { (acc, next) ⇒ acc + next } drop 1
+    private def exo(point: Point): Stream[Point] = {
+
+      val (x, y, z) = point
+      val xs: Stream[Long] = exo(x)
+      val ys: Stream[Long] = exo(y)
+      val zs: Stream[Long] = exo(z)
+
+      (xs, ys, zs).zipped.toStream
+    }
+
+
+    private def exo(scalar: Long): Stream[Long] = {
+      val xsr: Stream[Long] = (PowersOfTwo takeWhile (_ < this.radius)).reverse
+
+      val left: Stream[Long] = xsr.scanLeft(scalar) { (acc, next) ⇒ acc - next } drop 1
+      val right: Stream[Long] = xsr.scanLeft(scalar) { (acc, next) ⇒ acc + next } drop 1
+
+      left.reverse ++ right
     }
 
 
