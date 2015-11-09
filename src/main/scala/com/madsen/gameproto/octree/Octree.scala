@@ -41,7 +41,7 @@ object Octree {
   case class Node[T](
     centre: Point,
     radius: Long,
-    children: Vector[Octree[T]]
+    children: Map[Point, Octree[T]]
   ) extends Octree[T] {
     require(isPowerOfTwo(radius))
     require {
@@ -56,15 +56,16 @@ object Octree {
       val belongsUnderThisNode: Boolean = ???
 
       if (belongsUnderThisNode) {
-        val next: Octree[T] = childFor(centre, children) map { subtree ⇒
-          subtree.add(value, centre)
-        } getOrElse createSubtree(value, centre)
+        val next: Octree[T] = ???
+        //        childFor(centre, children) map { subtree ⇒
+        //          subtree.add(value, centre)
+        //        } getOrElse createSubtree(value, centre)
 
-        val c: Vector[Octree[T]] = (children filterNot { tree ⇒ tree.centre == next.centre }) :+ next
+        val c: Map[Point, Octree[T]] = children + (next.centre → next)
         copy(children = c)
       } else {
         val (parentCentre, parentRadius) = parent(centre, radius)
-        val children: Vector[Octree[T]] = Vector(this)
+        val children: Map[Point, Node[T]] = Map(this.centre → this)
 
         val node: Node[T] = Node(parentCentre, parentRadius, children)
 
@@ -74,27 +75,6 @@ object Octree {
 
 
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
-
-
-    private def exo(point: Point): Stream[Point] = {
-
-      val (x, y, z) = point
-      val xs: Stream[Long] = exo(x)
-      val ys: Stream[Long] = exo(y)
-      val zs: Stream[Long] = exo(z)
-
-      (xs, ys, zs).zipped.toStream
-    }
-
-
-    private def exo(scalar: Long): Stream[Long] = {
-      val xsr: Stream[Long] = (PowersOfTwo takeWhile (_ < this.radius)).reverse
-
-      val left: Stream[Long] = xsr.scanLeft(scalar) { (acc, next) ⇒ acc - next } drop 1
-      val right: Stream[Long] = xsr.scanLeft(scalar) { (acc, next) ⇒ acc + next } drop 1
-
-      left.reverse ++ right
-    }
 
 
     // TODO: Find existing node that leaf may belong under if one exists
@@ -112,7 +92,7 @@ object Octree {
       def helper(current: (Point, Long), acc: Octree[T]): Octree[T] = nextParent(current) match {
         case (this.centre, this.radius) ⇒ acc // next parent is this node
         case next @ (nextCentre, nextRadius) ⇒ // otherwise create missing step
-          val node = Node(nextCentre, nextRadius, Vector(acc))
+          val node = Node(nextCentre, nextRadius, Map(acc.centre → acc))
           helper(next, node)
       }
 
@@ -138,7 +118,7 @@ object Octree {
       if (this.centre == centre) Leaf(value, centre)
       else {
         val (parentCentre, parentRadius) = parent(centre, 1L)
-        val children: Vector[Octree[T]] = Vector(this)
+        val children: Map[Point, Leaf[T]] = Map(this.centre → this)
 
         val node: Node[T] = Node(parentCentre, parentRadius, children)
 
