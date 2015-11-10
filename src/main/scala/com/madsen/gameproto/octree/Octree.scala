@@ -56,13 +56,7 @@ object Octree {
       val belongsUnderThisNode: Boolean = ???
 
       if (belongsUnderThisNode) {
-        val next: Octree[T] = ???
-        //        childFor(centre, children) map { subtree ⇒
-        //          subtree.add(value, centre)
-        //        } getOrElse createSubtree(value, centre)
-
-        val c: Map[Point, Octree[T]] = children + (next.centre → next)
-        copy(children = c)
+        addUnderHere(value, centre)
       } else {
         val (parentCentre, parentRadius) = parent(centre, radius)
         val children: Map[Point, Node[T]] = Map(this.centre → this)
@@ -77,15 +71,22 @@ object Octree {
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
 
 
-    private def mergeIn(subtree: Octree[T]): Octree[T] = {
+    private def addUnderHere(value: T, centre: Point): Octree[T] = {
 
+      /*
+      We don't know which child to add it under.
+      So we have to create whole subtree and try to merge it in.
+
+      Problem: Change children while returning this node
+       */
+
+      if (radius > 2) {
+      } else {
+        Leaf(value, centre)
+      }
 
       ???
     }
-
-
-    // TODO: Find existing node that leaf may belong under if one exists
-    private def childFor(point: Point, candidates: Vector[Octree[T]]): Option[Octree[T]] = ???
 
 
     private def createSubtree(value: T, centre: Point): Octree[T] = {
@@ -135,9 +136,15 @@ object Octree {
 
 
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
+
+
+    def children: Map[(Long, Long, Long), Octree[T]] = Map.empty
   }
 
+
   class Empty[T] extends Octree[T] {
+
+    // TODO: This one doesn't make sense
 
     def add(value: T, centre: Point): Octree[T] = Leaf(value, centre)
 
@@ -146,12 +153,17 @@ object Octree {
 
 
     def centre: (Long, Long, Long) = ???
+
+
+    def children: Map[(Long, Long, Long), Octree[T]] = ???
   }
 
 }
 
 trait Octree[T] {
   def centre: Point
+
+  def children: Map[Point, Octree[T]]
 
   def add(value: T, centre: Point): Octree[T]
 
