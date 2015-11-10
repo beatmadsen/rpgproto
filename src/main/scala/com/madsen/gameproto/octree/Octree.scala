@@ -77,6 +77,13 @@ object Octree {
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
 
 
+    private def mergeIn(subtree: Octree[T]): Octree[T] = {
+
+
+      ???
+    }
+
+
     // TODO: Find existing node that leaf may belong under if one exists
     private def childFor(point: Point, candidates: Vector[Octree[T]]): Option[Octree[T]] = ???
 
