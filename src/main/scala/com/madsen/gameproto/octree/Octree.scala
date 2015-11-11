@@ -71,6 +71,9 @@ object Octree {
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
 
 
+    def isLeaf: Boolean = false
+
+
     private def addUnderHere(value: T, centre: Point): Octree[T] = {
 
       /*
@@ -80,10 +83,25 @@ object Octree {
       Problem: Change children while returning this node
        */
 
+      def helper(parent: Octree[T], candidateChild: Octree[T]): Octree[T] = {
+        val mChild: Option[Octree[T]] = parent.children get candidateChild.centre
+        val can: Octree[T] = mChild map { child ⇒
+          val next: Octree[T] = parent.children.head._2
+          helper(child, next)
+        } getOrElse candidateChild
+
+
+        ???
+      }
+
       if (radius > 2) {
+
       } else {
         Leaf(value, centre)
       }
+
+
+
 
       ???
     }
@@ -139,6 +157,9 @@ object Octree {
 
 
     def children: Map[(Long, Long, Long), Octree[T]] = Map.empty
+
+
+    def isLeaf: Boolean = true
   }
 
 
@@ -156,6 +177,9 @@ object Octree {
 
 
     def children: Map[(Long, Long, Long), Octree[T]] = ???
+
+
+    def isLeaf: Boolean = ???
   }
 
 }
@@ -164,6 +188,8 @@ trait Octree[T] {
   def centre: Point
 
   def children: Map[Point, Octree[T]]
+
+  def isLeaf: Boolean
 
   def add(value: T, centre: Point): Octree[T]
 
