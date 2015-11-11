@@ -83,15 +83,14 @@ object Octree {
       Problem: Change children while returning this node
        */
 
-      def helper(parent: Octree[T], candidateChild: Octree[T]): Octree[T] = {
+      def helper(parent: Node[T], candidateChild: Octree[T]): Octree[T] = {
         val mChild: Option[Octree[T]] = parent.children get candidateChild.centre
-        val can: Octree[T] = mChild map { child ⇒
+        val can: Octree[T] = mChild map { case child: Node[T] ⇒ // TODO: solve this with OOP?
           val next: Octree[T] = parent.children.head._2
           helper(child, next)
         } getOrElse candidateChild
 
-
-        ???
+        parent.copy(children = parent.children + (can.centre → can))
       }
 
       if (radius > 2) {
