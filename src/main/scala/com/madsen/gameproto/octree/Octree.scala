@@ -76,33 +76,23 @@ object Octree {
 
     private def addUnderHere(value: T, centre: Point): Octree[T] = {
 
-      /*
-      We don't know which child to add it under.
-      So we have to create whole subtree and try to merge it in.
-
-      Problem: Change children while returning this node
-       */
-
       def helper(parent: Node[T], candidateChild: Octree[T]): Octree[T] = {
+
         val mChild: Option[Octree[T]] = parent.children get candidateChild.centre
-        val can: Octree[T] = mChild map { case child: Node[T] ⇒ // TODO: solve this with OOP?
-          val next: Octree[T] = parent.children.head._2
-          helper(child, next)
+
+        val can: Octree[T] = mChild map {
+          // TODO: solve this with OOP?
+          case child: Node[T] ⇒
+            val next: Octree[T] = parent.children.head._2
+            helper(child, next)
+
+          case child: Leaf[T] ⇒ candidateChild
         } getOrElse candidateChild
 
         parent.copy(children = parent.children + (can.centre → can))
       }
 
-      if (radius > 2) {
-
-      } else {
-        Leaf(value, centre)
-      }
-
-
-
-
-      ???
+      helper(this, createSubtree(value, centre))
     }
 
 
