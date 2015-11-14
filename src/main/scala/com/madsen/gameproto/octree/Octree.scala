@@ -73,7 +73,8 @@ object Octree {
       def leafScalars(centreScalar: Long): NumericRange[Long] = {
         val upperBound = centreScalar + radius / 2 - 1
         val lowerBound = centreScalar - radius / 2 + 1
-        lowerBound to upperBound
+
+        lowerBound.to(upperBound, 2L)
       }
 
       (leafScalars(x0) contains x1) &&
