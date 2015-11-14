@@ -65,7 +65,12 @@ object Octree {
     }
 
 
-    def get(key: Point): Option[T] = ???
+    def get(key: Point): Option[T] = {
+
+      // TODO: Produce chain of parents until radius matches this
+
+      ???
+    }
 
 
     def iterator: Iterator[(Point, T)] = ???
