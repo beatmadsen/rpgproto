@@ -57,6 +57,23 @@ object Octree {
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
 
 
+    def +[B1 >: T](kv: (Point, B1)): Map[Point, B1] = {
+
+      // TODO: This one is difficult to do efficiently because B1 >: T
+
+      ???
+    }
+
+
+    def get(key: Point): Option[T] = ???
+
+
+    def iterator: Iterator[(Point, T)] = ???
+
+
+    def -(key: Point): Map[Point, T] = ???
+
+
     private def addToNewParent(value: T, centre: Point): Octree[T] = {
       val (parentCentre, parentRadius) = parent(centre, radius)
       val children: Map[Point, Node[T]] = Map(this.centre → this)
@@ -139,6 +156,14 @@ object Octree {
     }
 
 
+    def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
+
+
+    def +[B1 >: T](kv: (Point, B1)): Map[Point, B1] = kv match {
+      case (key, v) ⇒ Leaf(v, key).add(value, centre)
+    }
+
+
     def add(value: T, centre: Point): Octree[T] = {
       if (this.centre == centre) Leaf(value, centre)
       else {
@@ -152,22 +177,43 @@ object Octree {
     }
 
 
-    def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
+    def iterator: Iterator[(Point, T)] = Iterator((centre, value))
+
+
+    def -(key: Point): Map[Point, T] = get(key) map { _ ⇒ Map.empty[Point, T] } getOrElse this
+
+
+    def get(key: Point): Option[T] = key match {
+      case c if c == this.centre ⇒ Some(value)
+      case _ ⇒ None
+    }
   }
 
 
   class Empty[T] extends Octree[T] {
-    // TODO: This one doesn't make sense
 
     def add(value: T, centre: Point): Octree[T] = Leaf(value, centre)
 
-
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = Iterable.empty
+
+
+    def +[B1 >: T](kv: (Point, B1)): Map[Point, B1] = kv match {
+      case (key, value) ⇒ Leaf(value, key)
+    }
+
+
+    def get(key: Point): Option[T] = None
+
+
+    def iterator: Iterator[(Point, T)] = Iterator.empty
+
+
+    def -(key: Point): Map[Point, T] = Map.empty
   }
 
 }
 
-trait Octree[T] {
+trait Octree[T] extends Map[Point, T] {
 
   def add(value: T, centre: Point): Octree[T]
 
