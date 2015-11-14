@@ -3,6 +3,7 @@ package com.madsen.gameproto.octree
 import com.madsen.gameproto.octree.Octree._
 
 import scala.annotation.tailrec
+import scala.collection.immutable.NumericRange
 
 object Octree {
   type Point = (Long, Long, Long)
@@ -10,17 +11,14 @@ object Octree {
   val PowersOfTwo: Stream[Long] = Stream.continually(2L).scanLeft(1L) { (a, b) ⇒ a * b }
 
 
+  def apply[T](): Octree[T] = new Empty[T]
+
+
   def isPowerOfTwo(candidate: Long): Boolean = {
 
     val rest: Stream[Long] = PowersOfTwo dropWhile (_ < candidate)
     rest.head == candidate
   }
-
-
-  isPowerOfTwo(32)
-
-
-  def apply[T](): Octree[T] = new Empty[T]
 
 
   private def parent(point: Point, radius: Long): (Point, Long) = {
@@ -51,28 +49,40 @@ object Octree {
     }
 
 
-    def add(value: T, centre: Point): Octree[T] = {
-
-      // TODO: By 'nature' only 8 children (as defined by points) should fit in each node
-      val belongsUnderThisNode: Boolean = ???
-
-      if (belongsUnderThisNode) {
-        addChild(value, createSubtreeChain(centre))
-      } else {
-        val (parentCentre, parentRadius) = parent(centre, radius)
-        val children: Map[Point, Node[T]] = Map(this.centre → this)
-
-        val node: Node[T] = Node(parentCentre, parentRadius, Right(children))
-
-        node.add(value, centre)
-      }
-    }
+    def add(value: T, centre: Point): Octree[T] =
+      if (belongsUnderThisNode(centre)) addChild(value, createSubtreeChain(centre))
+      else addToNewParent(value, centre)
 
 
     def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
 
 
-    def addChild(value: T, chain: List[Point]): Node[T] = {
+    private def addToNewParent(value: T, centre: Point): Octree[T] = {
+      val (parentCentre, parentRadius) = parent(centre, radius)
+      val children: Map[Point, Node[T]] = Map(this.centre → this)
+      val node: Node[T] = Node(parentCentre, parentRadius, Right(children))
+
+      node.add(value, centre)
+    }
+
+
+    private def belongsUnderThisNode(centre: Point): Boolean = {
+      val (x0, y0, z0) = this.centre
+      val (x1, y1, z1) = centre
+
+      def leafScalars(centreScalar: Long): NumericRange[Long] = {
+        val upperBound = centreScalar + radius / 2 - 1
+        val lowerBound = centreScalar - radius / 2 + 1
+        lowerBound to upperBound
+      }
+
+      (leafScalars(x0) contains x1) &&
+        (leafScalars(y0) contains y1) &&
+        (leafScalars(z0) contains z1)
+    }
+
+
+    private def addChild(value: T, chain: List[Point]): Node[T] = {
 
       val centre: Point = chain.head
 
