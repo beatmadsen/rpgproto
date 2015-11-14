@@ -2,6 +2,8 @@ package com.madsen.gameproto.octree
 
 import com.madsen.gameproto.octree.Octree._
 
+import scala.annotation.tailrec
+
 object Octree {
   type Point = (Long, Long, Long)
 
@@ -74,61 +76,42 @@ object Octree {
 
       val centre: Point = chain.head
 
-      def locateOrCreateChildNode(nodes: Map[Point, Node[T]]) = {
+      def locateOrCreateChildNode(nodes: Map[Point, Node[T]]) = nodes.getOrElse(centre, {
+        val newChildren: Either[Map[Point, Leaf[T]], Map[Point, Node[T]]] =
+          if (chain.size == 2) Left(Map.empty)
+          else Right(Map.empty)
+
+        Node(centre, this.radius / 2, newChildren)
+      })
+
+      def locateOrCreateChildLeaf(nodes: Map[Point, Leaf[T]]) = nodes.getOrElse(centre, Leaf(value, centre))
+
+      def updateNodes(children: Map[Point, Node[T]]): Map[Point, Node[T]] = {
         assert(chain.size > 1)
-
-        nodes.getOrElse(centre, {
-          val newChildren: Either[Map[Point, Leaf[T]], Map[Point, Node[T]]] =
-            if (chain.size == 2) Left(Map.empty)
-            else Right(Map.empty)
-
-          Node(centre, this.radius / 2, newChildren)
-        })
+        val updatedChild: Node[T] = locateOrCreateChildNode(children).addChild(value, chain.tail)
+        children + (centre → updatedChild)
       }
 
-
-      def locateOrCreateChildLeaf(nodes: Map[Point, Leaf[T]]) = {
+      def updateLeaves(children: Map[Point, Leaf[T]]): Map[Point, Leaf[T]] = {
         assert(chain.size == 1)
-        nodes.getOrElse(centre, Leaf(value, centre))
+        val updatedChild: Leaf[T] = locateOrCreateChildLeaf(children)
+        children + (centre → updatedChild)
       }
 
-
-      val c1 = children
-        .right
-        .map { nodes ⇒
-          val updatedChild: Node[T] = locateOrCreateChildNode(nodes).addChild(value, chain.tail)
-          nodes + (centre → updatedChild)
-        }
-        .left
-        .map { leaves ⇒
-          val leaf = locateOrCreateChildLeaf(leaves)
-          leaves + (centre → leaf)
-        }
-
-      copy(children = c1)
+      copy(children = children.right.map(updateNodes).left.map(updateLeaves))
     }
 
 
-    private def createSubtreeChain(centre: Point): List[Point] = ???
+    private def createSubtreeChain(centre: Point): List[Point] = {
 
+      @tailrec
+      def helper(current: (Point, Long), acc: List[Point]): List[Point] = current match {
+        case (this.centre, this.radius) ⇒ acc // next parent is this node
+        case (p, r) ⇒ helper(parent(p, r), p :: acc)
+      }
 
-    //    private def createSubtree(value: T, centre: Point): Octree[T] = {
-    //      // start with the leaf
-    //      val leaf = Leaf(value, centre)
-    //
-    //      // now get parent for leaf and keep adding until parent == this
-    //      val nextParent: ((Point, Long)) ⇒ (Point, Long) = (parent _).tupled
-    //
-    //      @tailrec
-    //      def helper(current: (Point, Long), acc: Octree[T]): Octree[T] = nextParent(current) match {
-    //        case (this.centre, this.radius) ⇒ acc // next parent is this node
-    //        case next @ (nextCentre, nextRadius) ⇒ // otherwise create missing step
-    //          val node = Node(nextCentre, nextRadius, Map(acc.centre → acc))
-    //          helper(next, node)
-    //      }
-    //
-    //      helper((centre, 1L), leaf)
-    //    }
+      helper((centre, 1L), Nil)
+    }
   }
 
   /**
