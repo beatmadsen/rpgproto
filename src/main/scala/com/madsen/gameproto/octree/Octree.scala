@@ -64,8 +64,22 @@ object Octree {
 
 
     def get(key: Point): Option[B] = {
-
       // TODO: Produce chain of parents until radius matches this
+
+      @tailrec
+      def helper(current: (Point, Long), acc: List[Point]): List[Point] = current match {
+        case (p, r) if r == this.radius ⇒ p :: acc
+        case (p, r) ⇒ helper(parent(p, r), p :: acc)
+      }
+
+      val list = helper((key, 1), Nil)
+
+      if (list.head != this.centre) None
+      else if (false) {
+        ???
+      }
+
+
 
       ???
     }
