@@ -6,12 +6,16 @@ import scala.annotation.tailrec
 import scala.collection.immutable.NumericRange
 
 object Octree {
+
   type Point = (Long, Long, Long)
 
   val PowersOfTwo: Stream[Long] = Stream.continually(2L).scanLeft(1L) { (a, b) ⇒ a * b }
 
 
   def apply[T](): Octree[T] = new Empty[T]
+
+
+  def empty[T]: Octree[T] = new Empty[T]
 
 
   def isPowerOfTwo(candidate: Long): Boolean = {
@@ -22,6 +26,7 @@ object Octree {
 
 
   private def parent(point: Point, radius: Long): (Point, Long) = {
+
     val (x, y, z) = point
     val newPoint: Point = List(x, y, z) map { scalar ⇒ parentScalar(scalar, radius) } match {
       case x1 :: y1 :: z1 :: _ ⇒ (x1, y1, z1)
@@ -32,16 +37,18 @@ object Octree {
 
 
   private def parentScalar(centre: Long, radius: Long): Long = {
+
     val (x, r) = (centre, radius)
     x + r - 2 * r * (((x - r) / (2 * r)) % 2)
   }
 
 
-  case class Node[T](
+  case class Node[+B](
     centre: Point,
     radius: Long,
-    children: Either[Map[Point, Leaf[T]], Map[Point, Node[T]]]
-  ) extends Octree[T] {
+    children: Either[Map[Point, Leaf[B]], Map[Point, Node[B]]]
+  ) extends Octree[B] {
+
     require(isPowerOfTwo(radius))
     require {
       val (cx, cy, cz) = centre
@@ -49,15 +56,12 @@ object Octree {
     }
 
 
-    def add(value: T, centre: Point): Octree[T] =
+    def add[B1 >: B](value: B1, centre: Point): Octree[B1] =
       if (belongsUnderThisNode(centre)) addChild(value, createSubtreeChain(centre))
       else addToNewParent(value, centre)
 
 
-    def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
-
-
-    def +[B1 >: T](kv: (Point, B1)): Map[Point, B1] = {
+    def +[B1 >: B](kv: (Point, B1)): Map[Point, B1] = {
 
       // TODO: This one is difficult to do efficiently because B1 >: T
 
@@ -65,7 +69,7 @@ object Octree {
     }
 
 
-    def get(key: Point): Option[T] = {
+    def get(key: Point): Option[B] = {
 
       // TODO: Produce chain of parents until radius matches this
 
@@ -73,26 +77,32 @@ object Octree {
     }
 
 
-    def iterator: Iterator[(Point, T)] = ???
+    def iterator: Iterator[(Point, B)] = ???
 
 
-    def -(key: Point): Map[Point, T] = ???
+    def -(key: Point): Map[Point, B] = ???
 
 
-    private def addToNewParent(value: T, centre: Point): Octree[T] = {
+    def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
+
+
+    private def addToNewParent[B1 >: B](value: B1, centre: Point): Octree[B1] = {
+
       val (parentCentre, parentRadius) = parent(centre, radius)
-      val children: Map[Point, Node[T]] = Map(this.centre → this)
-      val node: Node[T] = Node(parentCentre, parentRadius, Right(children))
+      val children: Map[Point, Node[B1]] = Map(this.centre → this)
+      val node: Node[B1] = Node(parentCentre, parentRadius, Right(children))
 
       node.add(value, centre)
     }
 
 
     private def belongsUnderThisNode(centre: Point): Boolean = {
+
       val (x0, y0, z0) = this.centre
       val (x1, y1, z1) = centre
 
       def leafScalars(centreScalar: Long): NumericRange[Long] = {
+
         val upperBound = centreScalar + radius / 2 - 1
         val lowerBound = centreScalar - radius / 2 + 1
 
@@ -105,29 +115,31 @@ object Octree {
     }
 
 
-    private def addChild(value: T, chain: List[Point]): Node[T] = {
+    private def addChild[B1 >: B](value: B1, chain: List[Point]): Node[B1] = {
 
       val centre: Point = chain.head
 
-      def locateOrCreateChildNode(nodes: Map[Point, Node[T]]) = nodes.getOrElse(centre, {
-        val newChildren: Either[Map[Point, Leaf[T]], Map[Point, Node[T]]] =
+      def locateOrCreateChildNode(nodes: Map[Point, Node[B1]]) = nodes.getOrElse(centre, {
+        val newChildren: Either[Map[Point, Leaf[B1]], Map[Point, Node[B1]]] =
           if (chain.size == 2) Left(Map.empty)
           else Right(Map.empty)
 
         Node(centre, this.radius / 2, newChildren)
       })
 
-      def locateOrCreateChildLeaf(nodes: Map[Point, Leaf[T]]) = nodes.getOrElse(centre, Leaf(value, centre))
+      def locateOrCreateChildLeaf(nodes: Map[Point, Leaf[B1]]) = nodes.getOrElse(centre, Leaf(value, centre))
 
-      def updateNodes(children: Map[Point, Node[T]]): Map[Point, Node[T]] = {
+      def updateNodes(children: Map[Point, Node[B1]]): Map[Point, Node[B1]] = {
+
         assert(chain.size > 1)
-        val updatedChild: Node[T] = locateOrCreateChildNode(children).addChild(value, chain.tail)
+        val updatedChild: Node[B1] = locateOrCreateChildNode(children).addChild(value, chain.tail)
         children + (centre → updatedChild)
       }
 
-      def updateLeaves(children: Map[Point, Leaf[T]]): Map[Point, Leaf[T]] = {
+      def updateLeaves(children: Map[Point, Leaf[B1]]): Map[Point, Leaf[B1]] = {
+
         assert(chain.size == 1)
-        val updatedChild: Leaf[T] = locateOrCreateChildLeaf(children)
+        val updatedChild: Leaf[B1] = locateOrCreateChildLeaf(children)
         children + (centre → updatedChild)
       }
 
@@ -147,13 +159,14 @@ object Octree {
     }
   }
 
+
   /**
     * Leaves have radius = 1 and must be placed on odd coordinates
     * @param value
     * @param centre
-    * @tparam T
+    * @tparam B
     */
-  case class Leaf[T](value: T, centre: Point) extends Octree[T] {
+  case class Leaf[+B](value: B, centre: Point) extends Octree[B] {
 
     require {
       val (cx, cy, cz) = centre
@@ -161,67 +174,64 @@ object Octree {
     }
 
 
-    def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = ???
+    def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
 
 
-    def +[B1 >: T](kv: (Point, B1)): Map[Point, B1] = kv match {
-      case (key, v) ⇒ Leaf(v, key).add(value, centre)
-    }
+    def +[B1 >: B](kv: (Point, B1)): Octree[B1] = {
 
+      val (centre, value) = kv
 
-    def add(value: T, centre: Point): Octree[T] = {
       if (this.centre == centre) Leaf(value, centre)
       else {
         val (parentCentre, parentRadius) = parent(centre, 1L)
-        val children: Map[Point, Leaf[T]] = Map(this.centre → this)
+        val children: Map[Point, Leaf[B1]] = Map(this.centre → this)
 
-        val node: Node[T] = Node(parentCentre, parentRadius, Left(children))
+        val node: Node[B1] = Node(parentCentre, parentRadius, Left(children))
 
         node.add(value, centre)
       }
     }
 
 
-    def iterator: Iterator[(Point, T)] = Iterator((centre, value))
+    def iterator: Iterator[(Point, B)] = Iterator((centre, value))
 
 
-    def -(key: Point): Map[Point, T] = get(key) map { _ ⇒ Map.empty[Point, T] } getOrElse this
+    def -(key: Point): Octree[B] = get(key) map { _ ⇒ Octree.empty } getOrElse this
 
 
-    def get(key: Point): Option[T] = key match {
+    def get(key: Point): Option[B] = key match {
       case c if c == this.centre ⇒ Some(value)
       case _ ⇒ None
     }
   }
 
 
-  class Empty[T] extends Octree[T] {
+  class Empty[B] extends Octree[B] {
 
-    def add(value: T, centre: Point): Octree[T] = Leaf(value, centre)
-
-    def findWithinDistanceOf(value: T, radius: Long): Iterable[T] = Iterable.empty
+    def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = Iterable.empty
 
 
-    def +[B1 >: T](kv: (Point, B1)): Map[Point, B1] = kv match {
+    def +[B1 >: B](kv: (Point, B1)): Octree[B1] = kv match {
       case (key, value) ⇒ Leaf(value, key)
     }
 
 
-    def get(key: Point): Option[T] = None
+    def iterator: Iterator[(Point, B)] = Iterator.empty
 
 
-    def iterator: Iterator[(Point, T)] = Iterator.empty
+    def get(key: Point): Option[B] = None
 
 
-    def -(key: Point): Map[Point, T] = Map.empty
+    def -(key: Point): Octree[B] = this
   }
+
 
 }
 
-trait Octree[T] extends Map[Point, T] {
 
-  def add(value: T, centre: Point): Octree[T]
+trait Octree[+B] extends Map[Point, B] {
 
-  def findWithinDistanceOf(value: T, radius: Long): Iterable[T]
+
+  def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1]
 }
 
