@@ -56,16 +56,10 @@ object Octree {
     }
 
 
-    def add[B1 >: B](value: B1, centre: Point): Octree[B1] =
-      if (belongsUnderThisNode(centre)) addChild(value, createSubtreeChain(centre))
-      else addToNewParent(value, centre)
-
-
-    def +[B1 >: B](kv: (Point, B1)): Map[Point, B1] = {
-
-      // TODO: This one is difficult to do efficiently because B1 >: T
-
-      ???
+    def +[B1 >: B](kv: (Point, B1)): Octree[B1] = kv match {
+      case (point, value) ⇒
+        if (belongsUnderThisNode(point)) addChild(value, createSubtreeChain(point))
+        else addToNewParent(value, point)
     }
 
 
@@ -80,7 +74,7 @@ object Octree {
     def iterator: Iterator[(Point, B)] = ???
 
 
-    def -(key: Point): Map[Point, B] = ???
+    def -(key: Point): Octree[B] = ???
 
 
     def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
@@ -92,7 +86,7 @@ object Octree {
       val children: Map[Point, Node[B1]] = Map(this.centre → this)
       val node: Node[B1] = Node(parentCentre, parentRadius, Right(children))
 
-      node.add(value, centre)
+      node + (centre → value)
     }
 
 
@@ -188,7 +182,7 @@ object Octree {
 
         val node: Node[B1] = Node(parentCentre, parentRadius, Left(children))
 
-        node.add(value, centre)
+        node + (centre → value)
       }
     }
 
