@@ -75,20 +75,21 @@ object Octree {
       val list = helper((key, 1), Nil)
 
       if (list.head != this.centre) None
-      else if (false) {
-        ???
-      }
+      else get(list)
+    }
 
+
+    private def get(list: List[Point]): Option[B] = {
 
 
       ???
     }
 
 
-    def iterator: Iterator[(Point, B)] = ???
+    def iterator: Iterator[(Point, B)] = ??? // TODO: depth first
 
 
-    def -(key: Point): Octree[B] = ???
+    def -(key: Point): Octree[B] = ??? // TODO: Kinda like get - find right node and copy without this leaf.
 
 
     def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
