@@ -79,13 +79,6 @@ object Octree {
     }
 
 
-    private def get(list: List[Point]): Option[B] = {
-
-
-      ???
-    }
-
-
     def iterator: Iterator[(Point, B)] = ??? // TODO: depth first
 
 
@@ -93,6 +86,18 @@ object Octree {
 
 
     def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
+
+
+    private def get(list: List[Point]): Option[B] = list match {
+      case Nil ⇒ None
+      case p :: ps ⇒
+        children
+          .right
+          .map { nodes ⇒ (nodes get p) flatMap { node ⇒ node get ps } }
+          .left
+          .map { leaves ⇒ (leaves get p) map { leaf ⇒ leaf.value } }
+          .merge
+    }
 
 
     private def addToNewParent[B1 >: B](value: B1, centre: Point): Octree[B1] = {
