@@ -71,7 +71,16 @@ object Octree {
     }
 
 
-    def iterator: Iterator[(Point, B)] = ??? // TODO: depth first
+    def iterator: Iterator[(Point, B)] = {
+
+      children
+        .right
+        .map { nodes ⇒ nodes.iterator flatMap { case (_, node) ⇒ node.iterator } }
+        .left
+        .map { leaves ⇒ leaves.iterator flatMap { case (_, leaf) ⇒ leaf.iterator } }
+        .merge
+    }
+
 
     def -(key: Point): Octree[B] = {
       val path: List[Point] = findTraversalPath(key)
