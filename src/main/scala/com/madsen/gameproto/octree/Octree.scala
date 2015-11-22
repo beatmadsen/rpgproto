@@ -3,16 +3,23 @@ package com.madsen.gameproto.octree
 import com.madsen.gameproto.octree.Octree._
 
 import scala.annotation.tailrec
-import scala.collection.immutable.NumericRange
+import scala.collection.immutable.{Map, NumericRange}
+import scala.collection.{GenTraversableOnce, MapLike}
 
 object Octree {
 
   type Point = (Long, Long, Long)
 
-  val PowersOfTwo: Stream[Long] = Stream.continually(2L).scanLeft(1L) { (a, b) ⇒ a * b }
+  private val PowersOfTwo: Stream[Long] = Stream.continually(2L).scanLeft(1L) { (a, b) ⇒ a * b }
 
 
-  def apply[T](): Octree[T] = new Empty[T]
+  def apply[T](): Octree[T] = empty
+
+
+  def apply[T](values: (Point, T)*): Octree[T] = {
+
+    empty[T].++(values)
+  }
 
 
   def empty[T]: Octree[T] = new Empty[T]
@@ -275,12 +282,64 @@ object Octree {
   }
 
 
+  class ScalingFacade[+B](private val delegate: Octree[B]) extends Octree[B] {
+
+    def +[B1 >: B](kv: (Point, B1)): Octree[B1] = kv match {
+      case (key, value) ⇒ new ScalingFacade[B1](delegate + (scale(key) → value))
+    }
+
+
+    def -(key: Point): Octree[B] = new ScalingFacade(delegate - scale(key))
+
+
+    def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
+
+
+    def get(key: Point): Option[B] = delegate.get(scale(key))
+
+
+    private def scale(point: Point): Point = point match {
+      case (x, y, z) ⇒ (scale(x), scale(y), scale(z))
+    }
+
+
+    private def scale(scalar: Long): Long = 2 * scalar + 1
+
+
+    def iterator: Iterator[(Point, B)] = {
+      delegate.iterator map { case (point, value) ⇒ inverseScale(point) → value }
+    }
+
+
+    private def inverseScale(point: Point): Point = point match {
+      case (x, y, z) ⇒ (inverseScale(x), inverseScale(y), inverseScale(z))
+    }
+
+
+    private def inverseScale(scalar: Long): Long = (scalar - 1) / 2
+  }
+
+
 }
 
 
-trait Octree[+B] extends Map[Point, B] {
+trait Octree[+B] extends Map[Point, B] with MapLike[Point, B, Octree[B]] {
 
+  override def empty: Octree[B] = new Empty
+
+  def +[B1 >: B](kv: (Point, B1)): Octree[B1]
+
+  def -(key: Point): Octree[B]
+
+  override def ++[B1 >: B](xs: GenTraversableOnce[(Point, B1)]): Octree[B1] = {
+    ((repr: Octree[B1]) /: xs.seq) (_ + _)
+  }
 
   def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1]
 }
 
+
+object Test {
+
+  Octree.apply((1L, 3L, 5L) → 42)
+}
