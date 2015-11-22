@@ -64,18 +64,10 @@ object Octree {
 
 
     def get(key: Point): Option[B] = {
-      // TODO: Produce chain of parents until radius matches this
 
-      @tailrec
-      def helper(current: (Point, Long), acc: List[Point]): List[Point] = current match {
-        case (p, r) if r == this.radius ⇒ p :: acc
-        case (p, r) ⇒ helper(parent(p, r), p :: acc)
-      }
+      val path: List[Point] = findTraversalPath(key)
 
-      val list = helper((key, 1), Nil)
-
-      if (list.head != this.centre) None
-      else get(list)
+      get(path)
     }
 
 
@@ -88,7 +80,24 @@ object Octree {
     def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
 
 
-    private def get(list: List[Point]): Option[B] = list match {
+    private def findTraversalPath(point: Point): List[Point] = {
+
+      @tailrec
+      def helper(current: (Point, Long), acc: List[Point]): List[Point] = current match {
+        case (p, r) if r == this.radius ⇒ p :: acc
+        case (p, r) ⇒ helper(parent(p, r), p :: acc)
+      }
+
+      val list = helper((point, 1), Nil)
+
+      list match {
+        case x :: xs if x != this.centre ⇒ Nil
+        case xs ⇒ xs
+      }
+    }
+
+
+    private def get(traversalPath: List[Point]): Option[B] = traversalPath match {
       case Nil ⇒ None
       case p :: ps ⇒
         children
