@@ -22,7 +22,7 @@ object Octree {
   }
 
 
-  def empty[T]: Octree[T] = new Empty[T]
+  def empty[T]: Octree[T] = new ScalingFacade(new Empty)
 
 
   def isPowerOfTwo(candidate: Long): Boolean = {
@@ -282,6 +282,11 @@ object Octree {
   }
 
 
+  /**
+    * Facade that scales values so that Octree can contain even centre point coordinates
+    * @param delegate
+    * @tparam B
+    */
   class ScalingFacade[+B](private val delegate: Octree[B]) extends Octree[B] {
 
     def +[B1 >: B](kv: (Point, B1)): Octree[B1] = kv match {
@@ -292,18 +297,18 @@ object Octree {
     def -(key: Point): Octree[B] = new ScalingFacade(delegate - scale(key))
 
 
-    def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
-
-
-    def get(key: Point): Option[B] = delegate.get(scale(key))
-
-
     private def scale(point: Point): Point = point match {
       case (x, y, z) ⇒ (scale(x), scale(y), scale(z))
     }
 
 
     private def scale(scalar: Long): Long = 2 * scalar + 1
+
+
+    def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
+
+
+    def get(key: Point): Option[B] = delegate.get(scale(key))
 
 
     def iterator: Iterator[(Point, B)] = {
