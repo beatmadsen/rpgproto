@@ -73,8 +73,11 @@ object Octree {
 
     def iterator: Iterator[(Point, B)] = ??? // TODO: depth first
 
+    def -(key: Point): Octree[B] = {
+      val path: List[Point] = findTraversalPath(key)
 
-    def -(key: Point): Octree[B] = ??? // TODO: Kinda like get - find right node and copy without this leaf.
+      remove(path)
+    }
 
 
     def findWithinDistanceOf[B1 >: B](value: B1, radius: Long): Iterable[B1] = ???
@@ -93,6 +96,20 @@ object Octree {
       list match {
         case x :: xs if x != this.centre ⇒ Nil
         case xs ⇒ xs
+      }
+    }
+
+
+    private def remove(traversalPath: List[Point]): Octree[B] = {
+      traversalPath match {
+        case Nil ⇒ this
+        case p :: ps ⇒
+          children
+            .right
+            .map { nodes ⇒ (nodes get p) map { node ⇒ node remove ps } getOrElse this }
+            .left
+            .map { leaves ⇒ this.copy(children = Left(leaves - p)) }
+            .merge
       }
     }
 
